@@ -1,1 +1,1826 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GitHub Flow & Pull Request Mastery Workbook</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+          colors: {
+            gh: {
+              blue: '#0969da',
+              blueDark: '#2f81f7',
+              green: '#1a7f37',
+              greenBtn: '#1f883d',
+              greenHover: '#1a7f37',
+              purple: '#8250df',
+              purpleDark: '#a371f7',
+              red: '#cf222e',
+              redDark: '#f85149',
+              canvasLight: '#ffffff',
+              subtleLight: '#f6f8fa',
+              borderLight: '#d0d7de',
+              textLight: '#1f2328',
+              mutedLight: '#656d76',
+              canvasDark: '#0d1117',
+              subtleDark: '#161b22',
+              borderDark: '#30363d',
+              textDark: '#e6edf3',
+              mutedDark: '#848d97',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Custom scrollbars & print styles for workbook export */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(130, 130, 130, 0.35);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(130, 130, 130, 0.55);
+    }
 
+    .flow-node {
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+    }
+    .flow-node:hover {
+      transform: translateY(-2px);
+    }
+    .flow-node.active-node {
+      filter: drop-shadow(0 0 8px rgba(9, 105, 218, 0.45));
+    }
+
+    @keyframes pulsePop {
+      0% { transform: scale(0.95); opacity: 0.7; }
+      50% { transform: scale(1.04); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .animate-pop {
+      animation: pulsePop 0.35s ease-out forwards;
+    }
+
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #ffffff !important; color: #000000 !important; }
+      .print-break { page-break-before: always; }
+      textarea {
+        border: 1px solid #ccc !important;
+        height: auto !important;
+        min-height: 80px !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gh-subtleLight dark:bg-gh-canvasDark text-gh-textLight dark:text-gh-textDark font-sans antialiased transition-colors duration-200 selection:bg-gh-blue selection:text-white">
+
+  <!-- Toast Notification Banner (Replaces alert) -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none max-w-sm w-full px-4 sm:px-0"></div>
+
+  <!-- Confirmation Modal (Replaces confirm) -->
+  <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+    <div class="bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark rounded-xl max-w-md w-full p-6 shadow-2xl">
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-950/60 text-gh-red dark:text-gh-redDark flex items-center justify-center shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+        </div>
+        <h3 class="text-lg font-bold">Reset All Workbook Progress?</h3>
+      </div>
+      <p class="text-sm text-gh-mutedLight dark:text-gh-mutedDark mb-6">
+        This will clear your simulated repository state, branch history, reflection notes, checklists, and quiz answers. You will start fresh from Step 1.
+      </p>
+      <div class="flex justify-end gap-3">
+        <button id="cancel-reset-btn" class="px-4 py-2 text-sm font-medium rounded-lg border border-gh-borderLight dark:border-gh-borderDark hover:bg-gh-subtleLight dark:hover:bg-gh-canvasDark transition">
+          Cancel
+        </button>
+        <button id="confirm-reset-btn" class="px-4 py-2 text-sm font-semibold rounded-lg bg-gh-red hover:bg-red-700 text-white transition">
+          Yes, Reset Everything
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticky Top Header & Progress Bar -->
+  <header class="sticky top-0 z-40 bg-white/95 dark:bg-gh-subtleDark/95 backdrop-blur-md border-b border-gh-borderLight dark:border-gh-borderDark shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        <!-- Brand & Title -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gh-textLight dark:bg-white text-white dark:text-gh-canvasDark flex items-center justify-center shrink-0 shadow-xs">
+            <!-- GitHub Octocat-inspired Mark SVG -->
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h1 class="text-base sm:text-lg font-extrabold tracking-tight">GitHub Flow & Pull Request Mastery Workbook</h1>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-gh-blue dark:bg-blue-950 dark:text-gh-blueDark border border-blue-200 dark:border-blue-800">
+                Hello World Edition
+              </span>
+            </div>
+            <p class="text-xs text-gh-mutedLight dark:text-gh-mutedDark">Interactive Practical Guide &amp; Sandbox Simulator</p>
+          </div>
+        </div>
+
+        <!-- Controls & Progress Counter -->
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3 no-print">
+          <!-- Badge Counter -->
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark text-xs font-semibold">
+            <span class="w-2 h-2 rounded-full bg-gh-green animate-pulse"></span>
+            <span>Mastery Score:</span>
+            <span id="badge-counter" class="font-mono text-gh-blue dark:text-gh-blueDark font-bold">0 / 15</span>
+          </div>
+
+          <!-- Theme Toggle -->
+          <button id="theme-toggle" title="Toggle Dark/Light Theme" class="p-2 rounded-lg border border-gh-borderLight dark:border-gh-borderDark hover:bg-gh-subtleLight dark:hover:bg-gh-canvasDark transition" aria-label="Toggle Theme">
+            <svg id="sun-icon" class="w-4 h-4 hidden dark:block text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            <svg id="moon-icon" class="w-4 h-4 block dark:hidden text-slate-700" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+          </button>
+
+          <!-- Print / Export Workbook Notes -->
+          <button id="export-btn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gh-blue hover:bg-blue-700 text-white shadow-xs transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            <span>Print / Export Notes</span>
+          </button>
+
+          <!-- Reset Progress -->
+          <button id="reset-btn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gh-borderLight dark:border-gh-borderDark hover:border-gh-red hover:text-gh-red dark:hover:border-gh-redDark dark:hover:text-gh-redDark transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+            <span>Reset Progress</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Dynamic Overall Progress Bar -->
+      <div class="mt-3">
+        <div class="flex items-center justify-between text-[11px] font-medium text-gh-mutedLight dark:text-gh-mutedDark mb-1">
+          <span id="progress-status-text">Getting started: Complete the 5 interactive labs, self-checks, and quiz</span>
+          <span id="progress-percent" class="font-mono font-bold text-gh-green">0%</span>
+        </div>
+        <div class="w-full h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+          <div id="progress-bar-fill" class="h-full bg-gradient-to-r from-gh-blue via-gh-purple to-gh-green transition-all duration-500 rounded-full" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
+
+    <!-- Quick Navigation Pills -->
+    <nav aria-label="Workbook Sections" class="flex flex-wrap items-center gap-2 no-print">
+      <a href="#architecture-section" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark hover:border-gh-blue transition">1. Visual Architecture</a>
+      <a href="#module-1" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark hover:border-gh-blue transition">Module 1: Repo</a>
+      <a href="#module-2" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark hover:border-gh-blue transition">Module 2: Branch</a>
+      <a href="#module-3" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark hover:border-gh-blue transition">Module 3: Commit</a>
+      <a href="#module-4" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark hover:border-gh-blue transition">Module 4: Pull Request</a>
+      <a href="#module-5" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark hover:border-gh-blue transition">Module 5: Merge</a>
+      <a href="#mastery-quiz" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark hover:border-gh-purple transition">Knowledge Check &amp; Pages Guide</a>
+    </nav>
+
+    <!-- ===================================================================== -->
+    <!-- SECTION 1: INTERACTIVE VISUAL ARCHITECTURE & GITHUB FLOW DIAGRAM      -->
+    <!-- ===================================================================== -->
+    <section id="architecture-section" class="bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark rounded-2xl p-6 sm:p-8 shadow-xs">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div>
+          <span class="inline-block text-xs font-bold uppercase tracking-wider text-gh-blue dark:text-gh-blueDark mb-1">Interactive Mental Model</span>
+          <h2 class="text-xl sm:text-2xl font-extrabold">The GitHub Flow Architecture</h2>
+          <p class="text-sm text-gh-mutedLight dark:text-gh-mutedDark mt-1">
+            Click any stage in the diagram below to inspect how branches protect your <code class="font-mono text-xs px-1.5 py-0.5 rounded bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark">main</code> codebase.
+          </p>
+        </div>
+        <div class="flex items-center gap-3 text-xs">
+          <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-gh-blue"></span> <code class="font-mono">main</code> (Production)</span>
+          <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-gh-green"></span> <code class="font-mono">readme-edits</code> (Draft)</span>
+          <span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-gh-purple"></span> Pull Request / Merge</span>
+        </div>
+      </div>
+
+      <!-- Interactive SVG Diagram -->
+      <div class="w-full overflow-x-auto pb-2">
+        <svg id="github-flow-svg" viewBox="0 0 960 270" class="w-full min-w-[680px] h-auto select-none" role="img" aria-label="Interactive GitHub Flow Diagram">
+          <defs>
+            <marker id="arrow-blue" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#0969da" />
+            </marker>
+            <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#1a7f37" />
+            </marker>
+            <marker id="arrow-purple" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#8250df" />
+            </marker>
+          </defs>
+
+          <!-- Track Labels -->
+          <text x="20" y="68" class="fill-gh-blue font-mono text-xs font-bold">main branch</text>
+          <text x="20" y="84" class="fill-gray-500 text-[10px]">Definitive / Live</text>
+
+          <text x="20" y="192" class="fill-gh-green font-mono text-xs font-bold">readme-edits</text>
+          <text x="20" y="208" class="fill-gray-500 text-[10px]">Feature / Safe Copy</text>
+
+          <!-- Main Branch Continuous Line -->
+          <line x1="150" y1="72" x2="885" y2="72" stroke="#0969da" stroke-width="4" stroke-linecap="round" />
+
+          <!-- Branch Off Curve (Node 1 -> Node 2) -->
+          <path d="M 190 72 C 235 72, 245 195, 300 195" fill="none" stroke="#1a7f37" stroke-width="3.5" stroke-dasharray="6 4" marker-end="url(#arrow-green)" />
+
+          <!-- Feature Branch Line (Node 2 -> Node 3 -> Node 4) -->
+          <line x1="335" y1="195" x2="465" y2="195" stroke="#1a7f37" stroke-width="3.5" marker-end="url(#arrow-green)" />
+          <line x1="505" y1="195" x2="625" y2="195" stroke="#8250df" stroke-width="3.5" marker-end="url(#arrow-purple)" />
+
+          <!-- Merge Curve (Node 4 -> Node 5) -->
+          <path d="M 665 195 C 720 195, 730 72, 775 72" fill="none" stroke="#8250df" stroke-width="3.5" marker-end="url(#arrow-purple)" />
+
+          <!-- Delete Branch Dotted Tail -->
+          <line x1="665" y1="195" x2="885" y2="195" stroke="#9ca3af" stroke-width="2" stroke-dasharray="4 6" />
+          <text x="805" y="218" class="fill-gray-400 font-mono text-[11px]">branch deleted</text>
+
+          <!-- NODE 1: Create Repo (main) -->
+          <g class="flow-node active-node" data-phase="1" transform="translate(170, 72)">
+            <circle r="22" fill="#0969da" stroke="#ffffff" stroke-width="3" />
+            <text y="5" text-anchor="middle" fill="#ffffff" class="font-bold text-xs">1</text>
+            <rect x="-65" y="-56" width="130" height="24" rx="6" fill="#eff6ff" stroke="#bfdbfe" />
+            <text y="-40" text-anchor="middle" fill="#1e40af" class="font-semibold text-[11px]">Create Repo (main)</text>
+          </g>
+
+          <!-- NODE 2: Create Branch -->
+          <g class="flow-node" data-phase="2" transform="translate(320, 195)">
+            <circle r="22" fill="#1a7f37" stroke="#ffffff" stroke-width="3" />
+            <text y="5" text-anchor="middle" fill="#ffffff" class="font-bold text-xs">2</text>
+            <rect x="-65" y="30" width="130" height="24" rx="6" fill="#f0fdf4" stroke="#bbf7d0" />
+            <text y="46" text-anchor="middle" fill="#166534" class="font-semibold text-[11px]">Create Branch</text>
+          </g>
+
+          <!-- NODE 3: Commit Changes -->
+          <g class="flow-node" data-phase="3" transform="translate(490, 195)">
+            <circle r="22" fill="#1a7f37" stroke="#ffffff" stroke-width="3" />
+            <text y="5" text-anchor="middle" fill="#ffffff" class="font-bold text-xs">3</text>
+            <rect x="-68" y="30" width="136" height="24" rx="6" fill="#f0fdf4" stroke="#bbf7d0" />
+            <text y="46" text-anchor="middle" fill="#166534" class="font-semibold text-[11px]">Make &amp; Commit Edits</text>
+          </g>
+
+          <!-- NODE 4: Open Pull Request -->
+          <g class="flow-node" data-phase="4" transform="translate(650, 195)">
+            <circle r="22" fill="#8250df" stroke="#ffffff" stroke-width="3" />
+            <text y="5" text-anchor="middle" fill="#ffffff" class="font-bold text-xs">4</text>
+            <rect x="-72" y="30" width="144" height="24" rx="6" fill="#faf5ff" stroke="#e9d5ff" />
+            <text y="46" text-anchor="middle" fill="#6b21a8" class="font-semibold text-[11px]">Open Pull Request</text>
+          </g>
+
+          <!-- NODE 5: Merge & Clean Up -->
+          <g class="flow-node" data-phase="5" transform="translate(800, 72)">
+            <circle r="22" fill="#8250df" stroke="#ffffff" stroke-width="3" />
+            <text y="5" text-anchor="middle" fill="#ffffff" class="font-bold text-xs">5</text>
+            <rect x="-72" y="-56" width="144" height="24" rx="6" fill="#faf5ff" stroke="#e9d5ff" />
+            <text y="-40" text-anchor="middle" fill="#6b21a8" class="font-semibold text-[11px]">Merge &amp; Delete Branch</text>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Phase Explanation Inspector Box -->
+      <div id="phase-inspector" class="mt-4 p-5 rounded-xl bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark grid grid-cols-1 md:grid-cols-3 gap-5 transition-all">
+        <div>
+          <span id="phase-badge" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-gh-blue dark:bg-blue-950 dark:text-gh-blueDark mb-2">
+            Stage 1 of 5
+          </span>
+          <h3 id="phase-title" class="text-lg font-bold">Create a Repository (main)</h3>
+          <p id="phase-summary" class="text-sm text-gh-mutedLight dark:text-gh-mutedDark mt-1">
+            A repository is your project's home folder on GitHub. Initializing it with a <code class="font-mono text-xs">README.md</code> establishes the default <code class="font-mono text-xs">main</code> branch.
+          </p>
+        </div>
+        <div class="bg-white dark:bg-gh-subtleDark p-4 rounded-xl border border-gh-borderLight dark:border-gh-borderDark">
+          <div class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 mb-1">Real-World Analogy</div>
+          <p id="phase-analogy" class="text-sm">
+            Think of creating a repository like setting up a clean, labeled binder on your desk with a title page (<code class="font-mono text-xs">README.md</code>) explaining what the project is about.
+          </p>
+        </div>
+        <div class="bg-white dark:bg-gh-subtleDark p-4 rounded-xl border border-gh-borderLight dark:border-gh-borderDark">
+          <div class="text-xs font-bold uppercase tracking-wider text-gh-purple dark:text-gh-purpleDark mb-1">Key Vocabulary</div>
+          <p id="phase-vocab" class="text-sm">
+            <strong>Repository (Repo):</strong> Storage space for files, folders, and full revision history.<br/>
+            <strong>main:</strong> The official, deployable source of truth.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- LIVE SANDBOX STATUS BAR (PERSISTENT VISUAL GIT GRAPH)                 -->
+    <!-- ===================================================================== -->
+    <div class="bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark rounded-2xl p-5 shadow-xs">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-gh-green" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          <h3 class="text-sm font-bold uppercase tracking-wider">Live Git Sandbox State</h3>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
+          <span class="px-2.5 py-1 rounded-md bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark">
+            Repo: <strong id="hud-repo" class="text-gh-blue dark:text-gh-blueDark">Not created</strong>
+          </span>
+          <span class="px-2.5 py-1 rounded-md bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark">
+            Active Branch: <strong id="hud-branch" class="text-gh-green">—</strong>
+          </span>
+          <span class="px-2.5 py-1 rounded-md bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark">
+            PR Status: <strong id="hud-pr" class="text-gh-purple dark:text-gh-purpleDark">None</strong>
+          </span>
+        </div>
+      </div>
+
+      <!-- Dynamic Live SVG Commit Graph -->
+      <div class="w-full overflow-x-auto bg-gh-subtleLight dark:bg-gh-canvasDark rounded-xl border border-gh-borderLight dark:border-gh-borderDark p-3">
+        <svg id="live-git-graph" viewBox="0 0 820 110" class="w-full min-w-[580px] h-24">
+          <text x="410" y="60" text-anchor="middle" class="fill-gray-400 text-xs font-mono">Complete Module 1 below to initialize your repository graph...</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODULE 1: CREATE A REPOSITORY                                         -->
+    <!-- ===================================================================== -->
+    <article id="module-1" class="bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
+      <div class="flex flex-wrap items-start justify-between gap-4 border-b border-gh-borderLight dark:border-gh-borderDark pb-5">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-blue-100 text-gh-blue dark:bg-blue-950 dark:text-gh-blueDark">MODULE 1</span>
+            <span id="m1-status-pill" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Pending Lab</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl font-extrabold mt-2">Create a Repository (<code class="font-mono text-gh-blue dark:text-gh-blueDark">hello-world</code>)</h2>
+          <p class="text-sm text-gh-mutedLight dark:text-gh-mutedDark mt-1">
+            Practice creating a new GitHub repository initialized with a Markdown <code class="font-mono text-xs">README.md</code> file.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Interactive GitHub UI Simulator (7 cols) -->
+        <div class="lg:col-span-7 bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark rounded-xl p-5">
+          <div class="flex items-center justify-between border-b border-gh-borderLight dark:border-gh-borderDark pb-3 mb-4">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-red-400"></span>
+              <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+              <span class="w-3 h-3 rounded-full bg-green-400"></span>
+              <span class="ml-2 text-xs font-mono text-gh-mutedLight dark:text-gh-mutedDark">github.com/new</span>
+            </div>
+            <span class="text-[11px] font-semibold uppercase tracking-wider text-gh-blue dark:text-gh-blueDark">Interactive Simulator</span>
+          </div>
+
+          <h3 class="text-base font-bold mb-1">Create a new repository</h3>
+          <p class="text-xs text-gh-mutedLight dark:text-gh-mutedDark mb-4">A repository contains all project files, including the revision history.</p>
+
+          <form id="m1-form" class="space-y-4">
+            <div>
+              <label for="repo-name-input" class="block text-xs font-bold mb-1">
+                Repository name <span class="text-gh-red">*</span>
+              </label>
+              <div class="flex items-center gap-2">
+                <span class="px-3 py-2 text-xs font-mono rounded-lg bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark text-gh-mutedLight dark:text-gh-mutedDark">you /</span>
+                <input id="repo-name-input" type="text" placeholder="Type: hello-world" class="flex-1 px-3 py-2 text-sm font-mono rounded-lg bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark focus:outline-none focus:ring-2 focus:ring-gh-blue" />
+              </div>
+              <p class="text-[11px] text-gh-mutedLight dark:text-gh-mutedDark mt-1">Hint: Enter <code class="font-mono font-semibold text-gh-green">hello-world</code> to match the tutorial.</p>
+            </div>
+
+            <div>
+              <label for="repo-desc-input" class="block text-xs font-bold mb-1">
+                Description <span class="font-normal text-gh-mutedLight dark:text-gh-mutedDark">(optional)</span>
+              </label>
+              <input id="repo-desc-input" type="text" placeholder="This repository is for practicing the GitHub Flow." class="w-full px-3 py-2 text-sm rounded-lg bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark focus:outline-none focus:ring-2 focus:ring-gh-blue" />
+            </div>
+
+            <!-- Visibility Radios -->
+            <div class="space-y-2 pt-1">
+              <label class="flex items-start gap-2.5 cursor-pointer">
+                <input type="radio" name="repo-vis" value="Public" checked class="mt-1 accent-gh-blue" />
+                <div>
+                  <span class="text-xs font-bold block">Public</span>
+                  <span class="text-[11px] text-gh-mutedLight dark:text-gh-mutedDark">Anyone on the internet can see this repository. Required for free GitHub Pages!</span>
+                </div>
+              </label>
+              <label class="flex items-start gap-2.5 cursor-pointer">
+                <input type="radio" name="repo-vis" value="Private" class="mt-1 accent-gh-blue" />
+                <div>
+                  <span class="text-xs font-bold block">Private</span>
+                  <span class="text-[11px] text-gh-mutedLight dark:text-gh-mutedDark">You choose who can see and commit to this repository.</span>
+                </div>
+              </label>
+            </div>
+
+            <!-- Initialize Checkbox -->
+            <div class="pt-2 border-t border-gh-borderLight dark:border-gh-borderDark">
+              <label class="flex items-start gap-2.5 cursor-pointer">
+                <input id="readme-checkbox" type="checkbox" class="mt-1 rounded accent-gh-blue" />
+                <div>
+                  <span class="text-xs font-bold block">Add a README file</span>
+                  <span class="text-[11px] text-gh-mutedLight dark:text-gh-mutedDark">This is where you can write a long description for your project (creates the initial <code class="font-mono">main</code> branch).</span>
+                </div>
+              </label>
+            </div>
+
+            <div class="pt-2">
+              <button type="submit" id="m1-submit-btn" class="px-4 py-2 rounded-lg text-sm font-semibold bg-gh-greenBtn hover:bg-gh-greenHover text-white shadow-xs transition">
+                Create repository
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Workbook Reflection & Self-Check (5 cols) -->
+        <div class="lg:col-span-5 flex flex-col justify-between space-y-4">
+          <div class="p-4 rounded-xl bg-blue-50/70 dark:bg-blue-950/25 border border-blue-200 dark:border-blue-900">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-gh-blue dark:text-gh-blueDark mb-2">Why Initialize with a README?</h4>
+            <p class="text-xs leading-relaxed">
+              An empty Git repository has <strong>zero commits</strong> and therefore <strong>no branches yet</strong>. Checking <em>"Add a README file"</em> automatically creates your first commit and establishes the default <code class="font-mono font-semibold">main</code> branch so you can branch off it immediately.
+            </p>
+          </div>
+
+          <div>
+            <label for="note-m1" class="block text-xs font-bold mb-1.5">Workbook Reflection Note (Auto-saved)</label>
+            <textarea id="note-m1" rows="3" placeholder="In your own words, what is a repository and what role does README.md play?" class="w-full p-3 text-xs rounded-xl bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark focus:outline-none focus:ring-2 focus:ring-gh-blue"></textarea>
+          </div>
+
+          <div class="p-4 rounded-xl border border-gh-borderLight dark:border-gh-borderDark">
+            <div class="text-xs font-bold mb-2">Module 1 Self-Check</div>
+            <label class="flex items-center gap-2.5 text-xs cursor-pointer">
+              <input type="checkbox" class="self-check-box w-4 h-4 rounded accent-gh-green" data-check="m1" />
+              <span>I understand that <code class="font-mono">README.md</code> uses Markdown and initializes the <code class="font-mono">main</code> branch.</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ===================================================================== -->
+    <!-- MODULE 2: CREATE A BRANCH                                             -->
+    <!-- ===================================================================== -->
+    <article id="module-2" class="bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
+      <div class="flex flex-wrap items-start justify-between gap-4 border-b border-gh-borderLight dark:border-gh-borderDark pb-5">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-green-100 text-gh-green dark:bg-green-950 dark:text-green-400">MODULE 2</span>
+            <span id="m2-status-pill" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Locked (Complete Module 1)</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl font-extrabold mt-2">Create a Branch (<code class="font-mono text-gh-green">readme-edits</code>)</h2>
+          <p class="text-sm text-gh-mutedLight dark:text-gh-mutedDark mt-1">
+            Create an isolated workspace copy of <code class="font-mono text-xs">main</code> so you can edit safely without affecting live code.
+          </p>
+        </div>
+      </div>
+
+      <div id="m2-lock-overlay" class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+        Complete <strong>Module 1</strong> above to unlock your <code class="font-mono font-bold">hello-world</code> repository and create a branch.
+      </div>
+
+      <div id="m2-content" class="grid grid-cols-1 lg:grid-cols-12 gap-6 opacity-50 pointer-events-none transition-opacity">
+        <!-- Branch Dropdown Simulator (7 cols) -->
+        <div class="lg:col-span-7 bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark rounded-xl p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-mono font-semibold text-gh-blue dark:text-gh-blueDark">you / hello-world</span>
+            <span class="px-2 py-0.5 text-[11px] rounded-full border border-gh-borderLight dark:border-gh-borderDark">Code Tab</span>
+          </div>
+
+          <!-- Simulated GitHub Branch Switcher -->
+          <div class="relative max-w-sm">
+            <button type="button" id="branch-dropdown-trigger" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark shadow-2xs hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+              <svg class="w-4 h-4 text-gh-mutedLight" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 7h10v10M7 17L17 7"/></svg>
+              <span id="current-branch-label" class="font-mono">main</span>
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+
+            <!-- Dropdown Panel -->
+            <div class="mt-2 bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark rounded-xl shadow-lg p-3 space-y-3">
+              <div class="text-xs font-bold border-b border-gh-borderLight dark:border-gh-borderDark pb-2">Switch branches / tags</div>
+              <input id="branch-name-input" type="text" placeholder="Find or create a branch: readme-edits" class="w-full px-3 py-1.5 text-xs font-mono rounded-lg bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark focus:outline-none focus:ring-2 focus:ring-gh-blue" />
+
+              <div class="space-y-1">
+                <div class="flex items-center justify-between px-2.5 py-1.5 rounded-md bg-gh-subtleLight dark:bg-gh-canvasDark text-xs font-mono">
+                  <span>✓ main</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-gh-blue dark:bg-blue-950 dark:text-gh-blueDark">default</span>
+                </div>
+                <div id="existing-feature-branch" class="hidden items-center justify-between px-2.5 py-1.5 rounded-md bg-green-50 dark:bg-green-950/40 text-xs font-mono text-gh-green">
+                  <span>✓ readme-edits</span>
+                  <span class="text-[10px]">active</span>
+                </div>
+              </div>
+
+              <button type="button" id="create-branch-btn" class="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-gh-blue hover:bg-blue-700 text-white transition">
+                <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                <span>Create branch: <strong id="branch-preview-name" class="font-mono">readme-edits</strong> from <strong>main</strong></span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Simulated File List -->
+          <div class="border border-gh-borderLight dark:border-gh-borderDark rounded-lg overflow-hidden bg-white dark:bg-gh-subtleDark">
+            <div class="px-3 py-2 bg-gh-subtleLight dark:bg-gh-canvasDark border-b border-gh-borderLight dark:border-gh-borderDark flex items-center justify-between text-xs">
+              <span class="font-mono font-semibold">Initial commit</span>
+              <span class="text-gh-mutedLight dark:text-gh-mutedDark">Just now</span>
+            </div>
+            <div class="px-3 py-2.5 flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2 font-mono">
+                <svg class="w-4 h-4 text-gh-mutedLight" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <span>README.md</span>
+              </div>
+              <span class="text-gh-mutedLight dark:text-gh-mutedDark">Snapshot copied from main</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Workbook Reflection & Self-Check (5 cols) -->
+        <div class="lg:col-span-5 flex flex-col justify-between space-y-4">
+          <div class="p-4 rounded-xl bg-green-50/70 dark:bg-green-950/25 border border-green-200 dark:border-green-900">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-gh-green mb-2">Snapshot Isolation</h4>
+            <p class="text-xs leading-relaxed">
+              The moment you create <code class="font-mono font-semibold">readme-edits</code> off <code class="font-mono font-semibold">main</code>, both branches point to the exact same commit. Any future edits you make on <code class="font-mono">readme-edits</code> stay isolated until you open and merge a Pull Request.
+            </p>
+          </div>
+
+          <div>
+            <label for="note-m2" class="block text-xs font-bold mb-1.5">Workbook Reflection Note (Auto-saved)</label>
+            <textarea id="note-m2" rows="3" placeholder="Why is creating a separate branch better than editing the main branch directly?" class="w-full p-3 text-xs rounded-xl bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark focus:outline-none focus:ring-2 focus:ring-gh-blue"></textarea>
+          </div>
+
+          <div class="p-4 rounded-xl border border-gh-borderLight dark:border-gh-borderDark">
+            <div class="text-xs font-bold mb-2">Module 2 Self-Check</div>
+            <label class="flex items-center gap-2.5 text-xs cursor-pointer">
+              <input type="checkbox" class="self-check-box w-4 h-4 rounded accent-gh-green" data-check="m2" />
+              <span>I know that a new branch starts as an identical snapshot of <code class="font-mono">main</code>.</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ===================================================================== -->
+    <!-- MODULE 3: MAKE AND COMMIT CHANGES                                     -->
+    <!-- ===================================================================== -->
+    <article id="module-3" class="bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
+      <div class="flex flex-wrap items-start justify-between gap-4 border-b border-gh-borderLight dark:border-gh-borderDark pb-5">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-green-100 text-gh-green dark:bg-green-950 dark:text-green-400">MODULE 3</span>
+            <span id="m3-status-pill" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Locked (Complete Module 2)</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl font-extrabold mt-2">Make &amp; Commit Changes to <code class="font-mono text-gh-green">README.md</code></h2>
+          <p class="text-sm text-gh-mutedLight dark:text-gh-mutedDark mt-1">
+            Edit <code class="font-mono text-xs">README.md</code> on your <code class="font-mono text-xs">readme-edits</code> branch, preview the Markdown rendering, and record a descriptive commit.
+          </p>
+        </div>
+      </div>
+
+      <div id="m3-lock-overlay" class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+        Create the <code class="font-mono font-bold">readme-edits</code> branch in <strong>Module 2</strong> to unlock the Markdown editor.
+      </div>
+
+      <div id="m3-content" class="space-y-6 opacity-50 pointer-events-none transition-opacity">
+        <!-- Side-by-Side Markdown Editor & Live Preview -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- Editor Pane -->
+          <div class="bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark rounded-xl overflow-hidden flex flex-col">
+            <div class="px-4 py-2.5 border-b border-gh-borderLight dark:border-gh-borderDark flex items-center justify-between bg-white dark:bg-gh-subtleDark">
+              <span class="text-xs font-mono font-bold">Edit: README.md (on <span class="text-gh-green">readme-edits</span>)</span>
+              <span class="text-[11px] text-gh-mutedLight dark:text-gh-mutedDark">Markdown Supported</span>
+            </div>
+            <textarea id="readme-editor" rows="8" class="w-full flex-1 p-4 text-xs font-mono bg-transparent focus:outline-none resize-y leading-relaxed" aria-label="README Markdown Editor"># hello-world
+
+This repository is for practicing the GitHub Flow.
+
+## About Me
+Hi! I am mastering GitHub branches, commits, and pull requests.</textarea>
+          </div>
+
+          <!-- Live Rendered Preview Pane -->
+          <div class="bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark rounded-xl overflow-hidden flex flex-col">
+            <div class="px-4 py-2.5 border-b border-gh-borderLight dark:border-gh-borderDark flex items-center justify-between bg-gh-subtleLight dark:bg-gh-canvasDark">
+              <span class="text-xs font-bold">Live Markdown Preview</span>
+              <span class="text-[11px] text-gh-blue dark:text-gh-blueDark">Rendered Output</span>
+            </div>
+            <div id="readme-preview" class="p-4 text-sm space-y-2 overflow-y-auto max-h-64"></div>
+          </div>
+        </div>
+
+        <!-- Commit Changes Box -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div class="lg:col-span-7 bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark rounded-xl p-5 space-y-3">
+            <h3 class="text-sm font-bold">Commit changes</h3>
+            <div>
+              <label for="commit-msg-input" class="block text-xs font-semibold mb-1">Commit message <span class="text-gh-red">*</span></label>
+              <input id="commit-msg-input" type="text" placeholder="e.g., Add personal introduction to README.md" class="w-full px-3 py-2 text-xs font-mono rounded-lg bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark focus:outline-none focus:ring-2 focus:ring-gh-green" />
+              <p id="commit-quality-hint" class="text-[11px] text-gh-mutedLight dark:text-gh-mutedDark mt-1">
+                Tip: Use an imperative verb (e.g., <em>"Add..."</em>, <em>"Update..."</em>) and avoid vague messages like <em>"stuff"</em> or <em>"fix"</em>.
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-3 pt-1">
+              <button type="button" id="commit-changes-btn" class="px-4 py-2 rounded-lg text-xs font-semibold bg-gh-greenBtn hover:bg-gh-greenHover text-white shadow-xs transition">
+                Commit changes
+              </button>
+              <span class="text-[11px] text-gh-mutedLight dark:text-gh-mutedDark">
+                Target: <code class="font-mono text-gh-green font-semibold">Commit directly to the readme-edits branch</code>
+              </span>
+            </div>
+          </div>
+
+          <!-- Workbook Note & Self-Check -->
+          <div class="lg:col-span-5 space-y-3">
+            <div>
+              <label for="note-m3" class="block text-xs font-bold mb-1">Workbook Reflection Note (Auto-saved)</label>
+              <textarea id="note-m3" rows="2" placeholder="What makes a commit message helpful to collaborators?" class="w-full p-3 text-xs rounded-xl bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark focus:outline-none focus:ring-2 focus:ring-gh-blue"></textarea>
+            </div>
+            <div class="p-3.5 rounded-xl border border-gh-borderLight dark:border-gh-borderDark">
+              <label class="flex items-center gap-2.5 text-xs cursor-pointer">
+                <input type="checkbox" class="self-check-box w-4 h-4 rounded accent-gh-green" data-check="m3" />
+                <span>I understand that commits save snapshots on my active branch without touching <code class="font-mono">main</code>.</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ===================================================================== -->
+    <!-- MODULE 4: OPEN A PULL REQUEST & INSPECT DIFFS                         -->
+    <!-- ===================================================================== -->
+    <article id="module-4" class="bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
+      <div class="flex flex-wrap items-start justify-between gap-4 border-b border-gh-borderLight dark:border-gh-borderDark pb-5">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-purple-100 text-gh-purple dark:bg-purple-950 dark:text-gh-purpleDark">MODULE 4</span>
+            <span id="m4-status-pill" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Locked (Complete Module 3)</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl font-extrabold mt-2">Open a Pull Request &amp; Inspect Diffs</h2>
+          <p class="text-sm text-gh-mutedLight dark:text-gh-mutedDark mt-1">
+            Compare <code class="font-mono text-xs">readme-edits</code> against <code class="font-mono text-xs">main</code>, inspect line-by-line additions/deletions, and open your Pull Request.
+          </p>
+        </div>
+      </div>
+
+      <div id="m4-lock-overlay" class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+        Make and commit your changes to <code class="font-mono font-bold">README.md</code> in <strong>Module 3</strong> first.
+      </div>
+
+      <div id="m4-content" class="space-y-6 opacity-50 pointer-events-none transition-opacity">
+        <!-- Branch Comparison Bar -->
+        <div class="p-3.5 rounded-xl bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
+            <span class="px-2.5 py-1 rounded-md bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark">
+              base: <strong class="text-gh-blue dark:text-gh-blueDark">main</strong>
+            </span>
+            <span class="font-bold text-gh-mutedLight">←</span>
+            <span class="px-2.5 py-1 rounded-md bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark">
+              compare: <strong class="text-gh-green">readme-edits</strong>
+            </span>
+          </div>
+          <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-gh-green">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            Able to merge. These branches can be automatically merged.
+          </span>
+        </div>
+
+        <!-- Live Color-Coded Git Diff Viewer -->
+        <div class="border border-gh-borderLight dark:border-gh-borderDark rounded-xl overflow-hidden">
+          <div class="px-4 py-2.5 bg-gh-subtleLight dark:bg-gh-canvasDark border-b border-gh-borderLight dark:border-gh-borderDark flex items-center justify-between text-xs">
+            <span class="font-mono font-bold">Files changed (1): README.md</span>
+            <div class="flex items-center gap-2 font-mono">
+              <span id="diff-add-count" class="text-gh-green font-bold">+0</span>
+              <span id="diff-del-count" class="text-gh-red font-bold">-0</span>
+            </div>
+          </div>
+          <div id="git-diff-viewer" class="p-3 font-mono text-xs overflow-x-auto space-y-0.5 bg-white dark:bg-gh-subtleDark">
+            <!-- Populated dynamically by JS -->
+          </div>
+        </div>
+
+        <!-- Create Pull Request Form & Simulated Review -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-7 bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark rounded-xl p-5 space-y-4">
+            <h3 class="text-sm font-bold">Open a pull request</h3>
+            <div>
+              <label for="pr-title-input" class="block text-xs font-semibold mb-1">Pull Request Title <span class="text-gh-red">*</span></label>
+              <input id="pr-title-input" type="text" placeholder="Update README with personal bio" class="w-full px-3 py-2 text-xs rounded-lg bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark focus:outline-none focus:ring-2 focus:ring-gh-purple" />
+            </div>
+            <div>
+              <label for="pr-desc-input" class="block text-xs font-semibold mb-1">Description</label>
+              <textarea id="pr-desc-input" rows="3" placeholder="Explain what changes you made and why reviewers should merge them..." class="w-full p-3 text-xs rounded-lg bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark focus:outline-none focus:ring-2 focus:ring-gh-purple"></textarea>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <button type="button" id="open-pr-btn" class="px-4 py-2 rounded-lg text-xs font-semibold bg-gh-greenBtn hover:bg-gh-greenHover text-white shadow-xs transition">
+                Create pull request
+              </button>
+
+              <!-- Simulated Reviewer Toggle -->
+              <label class="inline-flex items-center gap-2 text-xs cursor-pointer">
+                <input id="simulate-review-toggle" type="checkbox" class="rounded accent-gh-purple" />
+                <span>Simulate teammate review comment</span>
+              </label>
+            </div>
+
+            <!-- Simulated Teammate Review Box -->
+            <div id="teammate-review-box" class="hidden p-3.5 rounded-xl bg-white dark:bg-gh-subtleDark border border-purple-200 dark:border-purple-900 space-y-1.5">
+              <div class="flex items-center justify-between text-xs">
+                <span class="font-bold text-gh-purple dark:text-gh-purpleDark">@octocat-reviewer</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-gh-green dark:bg-green-950 dark:text-green-400">Approved</span>
+              </div>
+              <p class="text-xs text-gh-mutedLight dark:text-gh-mutedDark">
+                "Great addition to <code class="font-mono">README.md</code>! Clear commit history and clean diff. Ready to merge into <code class="font-mono">main</code>."
+              </p>
+            </div>
+          </div>
+
+          <!-- Workbook Note & Self-Check -->
+          <div class="lg:col-span-5 flex flex-col justify-between space-y-4">
+            <div class="p-4 rounded-xl bg-purple-50/70 dark:bg-purple-950/25 border border-purple-200 dark:border-purple-900">
+              <h4 class="text-xs font-bold uppercase tracking-wider text-gh-purple dark:text-gh-purpleDark mb-1.5">What is a Diff?</h4>
+              <p class="text-xs leading-relaxed">
+                A <strong>diff</strong> highlights the exact differences between two branches. <span class="text-gh-green font-semibold">Green lines (+)</span> are additions, while <span class="text-gh-red font-semibold">red lines (-)</span> are removals.
+              </p>
+            </div>
+
+            <div>
+              <label for="note-m4" class="block text-xs font-bold mb-1">Workbook Reflection Note (Auto-saved)</label>
+              <textarea id="note-m4" rows="2" placeholder="How do Pull Requests encourage collaboration and code quality?" class="w-full p-3 text-xs rounded-xl bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark focus:outline-none focus:ring-2 focus:ring-gh-blue"></textarea>
+            </div>
+
+            <div class="p-3.5 rounded-xl border border-gh-borderLight dark:border-gh-borderDark">
+              <label class="flex items-center gap-2.5 text-xs cursor-pointer">
+                <input type="checkbox" class="self-check-box w-4 h-4 rounded accent-gh-green" data-check="m4" />
+                <span>I can read a Git diff and explain why <code class="font-mono">base: main</code> receives changes from <code class="font-mono">compare: readme-edits</code>.</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ===================================================================== -->
+    <!-- MODULE 5: MERGE PULL REQUEST & CLEAN UP                               -->
+    <!-- ===================================================================== -->
+    <article id="module-5" class="bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
+      <div class="flex flex-wrap items-start justify-between gap-4 border-b border-gh-borderLight dark:border-gh-borderDark pb-5">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-purple-100 text-gh-purple dark:bg-purple-950 dark:text-gh-purpleDark">MODULE 5</span>
+            <span id="m5-status-pill" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Locked (Complete Module 4)</span>
+          </div>
+          <h2 class="text-xl sm:text-2xl font-extrabold mt-2">Merge Pull Request &amp; Delete Branch</h2>
+          <p class="text-sm text-gh-mutedLight dark:text-gh-mutedDark mt-1">
+            Incorporate your <code class="font-mono text-xs">readme-edits</code> branch into <code class="font-mono text-xs">main</code>, delete the temporary branch, and light up your contribution graph.
+          </p>
+        </div>
+      </div>
+
+      <div id="m5-lock-overlay" class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+        Open your Pull Request in <strong>Module 4</strong> to unlock the merge controls.
+      </div>
+
+      <div id="m5-content" class="grid grid-cols-1 lg:grid-cols-12 gap-6 opacity-50 pointer-events-none transition-opacity">
+        <!-- Interactive Merge Box (7 cols) -->
+        <div class="lg:col-span-7 space-y-4">
+          <div id="merge-box" class="p-5 rounded-xl bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark space-y-4">
+            <div class="flex items-center gap-3">
+              <div id="merge-status-icon" class="w-9 h-9 rounded-full bg-green-100 dark:bg-green-950 text-gh-green flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              </div>
+              <div>
+                <h3 id="merge-box-title" class="text-sm font-bold">This branch has no conflicts with the base branch</h3>
+                <p id="merge-box-subtitle" class="text-xs text-gh-mutedLight dark:text-gh-mutedDark">Merging can be performed automatically.</p>
+              </div>
+            </div>
+
+            <!-- Step 5A: Merge Pull Request -->
+            <div id="merge-step-1" class="flex flex-wrap items-center gap-3">
+              <button type="button" id="merge-pr-btn" class="px-4 py-2 rounded-lg text-xs font-semibold bg-gh-greenBtn hover:bg-gh-greenHover text-white shadow-xs transition">
+                Merge pull request
+              </button>
+            </div>
+
+            <!-- Step 5B: Confirm Merge -->
+            <div id="merge-step-2" class="hidden space-y-3 pt-2 border-t border-gh-borderLight dark:border-gh-borderDark">
+              <p class="text-xs font-semibold">Confirm merge into <code class="font-mono text-gh-blue dark:text-gh-blueDark">main</code>:</p>
+              <div class="flex flex-wrap items-center gap-2">
+                <button type="button" id="confirm-merge-btn" class="px-4 py-2 rounded-lg text-xs font-semibold bg-gh-purple hover:bg-purple-700 text-white shadow-xs transition">
+                  Confirm merge
+                </button>
+                <button type="button" id="cancel-merge-btn" class="px-3 py-2 rounded-lg text-xs font-medium border border-gh-borderLight dark:border-gh-borderDark">
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+            <!-- Step 5C: Delete Branch -->
+            <div id="merge-step-3" class="hidden space-y-3 pt-2 border-t border-gh-borderLight dark:border-gh-borderDark">
+              <div class="flex items-center gap-2 text-xs font-bold text-gh-purple dark:text-gh-purpleDark">
+                <span class="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950">Merged</span>
+                <span>Pull request successfully merged and closed!</span>
+              </div>
+              <p class="text-xs text-gh-mutedLight dark:text-gh-mutedDark">
+                You’re all set—the <code class="font-mono">readme-edits</code> branch can be safely deleted.
+              </p>
+              <button type="button" id="delete-branch-btn" class="px-4 py-2 rounded-lg text-xs font-semibold bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark hover:border-gh-red hover:text-gh-red transition">
+                Delete branch
+              </button>
+            </div>
+          </div>
+
+          <!-- Simulated Contribution Graph Celebration -->
+          <div class="p-4 rounded-xl border border-gh-borderLight dark:border-gh-borderDark bg-white dark:bg-gh-subtleDark">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-xs font-bold">Simulated GitHub Profile Contribution Graph</span>
+              <span id="contrib-status" class="text-[11px] font-mono text-gh-mutedLight dark:text-gh-mutedDark">Merge PR to earn green square</span>
+            </div>
+            <div id="contrib-grid" class="grid grid-cols-14 gap-1.5" aria-label="Contribution Activity Squares">
+              <!-- 28 squares generated via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Workbook Note & Self-Check (5 cols) -->
+        <div class="lg:col-span-5 flex flex-col justify-between space-y-4">
+          <div class="p-4 rounded-xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 mb-1.5">What About Merge Conflicts?</h4>
+            <p class="text-xs leading-relaxed">
+              If two branches edit the <strong>exact same lines</strong> of a file, GitHub pauses the merge and asks you to resolve the conflict manually before clicking <em>Merge pull request</em>.
+            </p>
+          </div>
+
+          <div>
+            <label for="note-m5" class="block text-xs font-bold mb-1">Workbook Reflection Note (Auto-saved)</label>
+            <textarea id="note-m5" rows="2" placeholder="Why is it good hygiene to delete a feature branch after merging it?" class="w-full p-3 text-xs rounded-xl bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark focus:outline-none focus:ring-2 focus:ring-gh-blue"></textarea>
+          </div>
+
+          <div class="p-3.5 rounded-xl border border-gh-borderLight dark:border-gh-borderDark">
+            <label class="flex items-center gap-2.5 text-xs cursor-pointer">
+              <input type="checkbox" class="self-check-box w-4 h-4 rounded accent-gh-green" data-check="m5" />
+              <span>I understand that deleting a merged branch keeps the repository tidy without losing commit history.</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <!-- ===================================================================== -->
+    <!-- SECTION 4: MASTERY KNOWLEDGE CHECK & GITHUB PAGES HOSTING GUIDE       -->
+    <!-- ===================================================================== -->
+    <section id="mastery-quiz" class="grid grid-cols-1 lg:grid-cols-12 gap-8 print-break">
+      <!-- 5 Scenario-Based Quiz Questions (7 cols) -->
+      <div class="lg:col-span-7 bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
+        <div>
+          <span class="inline-block text-xs font-bold uppercase tracking-wider text-gh-purple dark:text-gh-purpleDark mb-1">Mastery Assessment</span>
+          <h2 class="text-xl sm:text-2xl font-extrabold">GitHub Flow Knowledge Check</h2>
+          <p class="text-sm text-gh-mutedLight dark:text-gh-mutedDark mt-1">
+            Test your practical mastery across 5 real-world scenarios. Instant feedback is provided for every answer.
+          </p>
+        </div>
+
+        <div id="quiz-container" class="space-y-5">
+          <!-- Questions injected by JS -->
+        </div>
+      </div>
+
+      <!-- Cheat Sheet & GitHub Pages Deployment Guide (5 cols) -->
+      <div class="lg:col-span-5 space-y-6">
+        <!-- Cheat Sheet Card -->
+        <div class="bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark rounded-2xl p-6 shadow-xs space-y-4">
+          <h3 class="text-lg font-extrabold flex items-center gap-2">
+            <svg class="w-5 h-5 text-gh-blue" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            <span>GitHub Flow Quick-Reference</span>
+          </h3>
+          <ol class="space-y-2.5 text-xs">
+            <li class="p-2.5 rounded-lg bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark">
+              <strong class="text-gh-blue dark:text-gh-blueDark">1. Create Branch:</strong> Always branch off <code class="font-mono">main</code> with a descriptive name (e.g., <code class="font-mono">readme-edits</code>).
+            </li>
+            <li class="p-2.5 rounded-lg bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark">
+              <strong class="text-gh-green">2. Make Commits:</strong> Save focused, atomic changes with clear commit messages explaining <em>why</em>.
+            </li>
+            <li class="p-2.5 rounded-lg bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark">
+              <strong class="text-gh-purple dark:text-gh-purpleDark">3. Open Pull Request:</strong> Propose merging your branch into <code class="font-mono">main</code> and inspect the color-coded diff.
+            </li>
+            <li class="p-2.5 rounded-lg bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark">
+              <strong class="text-amber-600 dark:text-amber-400">4. Review &amp; Discuss:</strong> Collaborators review changes, leave comments, or push follow-up commits.
+            </li>
+            <li class="p-2.5 rounded-lg bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark">
+              <strong class="text-gh-green">5. Merge &amp; Delete:</strong> Merge into <code class="font-mono">main</code> and delete the temporary branch to keep the repo clean.
+            </li>
+          </ol>
+        </div>
+
+        <!-- How to Host This Workbook on GitHub Pages -->
+        <div class="bg-white dark:bg-gh-subtleDark border border-gh-borderLight dark:border-gh-borderDark rounded-2xl p-6 shadow-xs space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-extrabold flex items-center gap-2">
+              <svg class="w-5 h-5 text-gh-green" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9"/></svg>
+              <span>Host on GitHub Pages</span>
+            </h3>
+            <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-green-100 text-gh-green dark:bg-green-950 dark:text-green-400">Free Hosting</span>
+          </div>
+          <p class="text-xs text-gh-mutedLight dark:text-gh-mutedDark">
+            This workbook is engineered as a single, zero-dependency <code class="font-mono">index.html</code> file ready for instant static hosting:
+          </p>
+          <ol class="list-decimal list-inside space-y-2 text-xs leading-relaxed">
+            <li>Create a <strong>Public</strong> repository on GitHub (e.g., <code class="font-mono">github-flow-workbook</code>).</li>
+            <li>Upload this file as <code class="font-mono font-bold">index.html</code> into the root of your <code class="font-mono">main</code> branch.</li>
+            <li>Go to <strong>Settings → Pages</strong> in your repository.</li>
+            <li>Under <strong>Build and deployment → Source</strong>, select <strong>Deploy from a branch</strong>.</li>
+            <li>Choose branch <code class="font-mono font-bold">main</code> and folder <code class="font-mono font-bold">/ (root)</code>, then click <strong>Save</strong>.</li>
+            <li>Within ~60 seconds, your live workbook URL (<code class="font-mono">https://username.github.io/github-flow-workbook/</code>) will appear at the top of the Pages settings!</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 border-t border-gh-borderLight dark:border-gh-borderDark text-center text-xs text-gh-mutedLight dark:text-gh-mutedDark">
+    <p>GitHub Flow &amp; Pull Request Mastery Workbook • Built as a self-contained single-file app for GitHub Pages.</p>
+  </footer>
+
+  <!-- ======================================================================= -->
+  <!-- APPLICATION LOGIC (VANILLA JS + LOCALSTORAGE PERSISTENCE)               -->
+  <!-- ======================================================================= -->
+  <script>
+    (function () {
+      const STORAGE_KEY = 'gh_flow_mastery_workbook_v1';
+
+      const INITIAL_README = `# hello-world\n\nThis repository is for practicing the GitHub Flow.`;
+
+      // Default application state
+      const defaultState = {
+        theme: 'light',
+        activePhase: 1,
+        repoCreated: false,
+        repoName: '',
+        repoDesc: '',
+        repoVisibility: 'Public',
+        branchCreated: false,
+        branchName: 'readme-edits',
+        committed: false,
+        readmeContent: `# hello-world\n\nThis repository is for practicing the GitHub Flow.\n\n## About Me\nHi! I am mastering GitHub branches, commits, and pull requests.`,
+        commitMessage: '',
+        prOpened: false,
+        prTitle: '',
+        prDescription: '',
+        reviewSimulated: false,
+        mergeStep: 0, // 0 = ready, 1 = confirming, 2 = merged, 3 = branch deleted
+        notes: {
+          m1: '',
+          m2: '',
+          m3: '',
+          m4: '',
+          m5: ''
+        },
+        checks: {
+          m1: false,
+          m2: false,
+          m3: false,
+          m4: false,
+          m5: false
+        },
+        quizAnswers: {} // { qIndex: selectedOptionIndex }
+      };
+
+      let state = loadState();
+
+      function loadState() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (!saved) return JSON.parse(JSON.stringify(defaultState));
+          const parsed = JSON.parse(saved);
+          return {
+            ...JSON.parse(JSON.stringify(defaultState)),
+            ...parsed,
+            notes: { ...defaultState.notes, ...(parsed.notes || {}) },
+            checks: { ...defaultState.checks, ...(parsed.checks || {}) },
+            quizAnswers: { ...(parsed.quizAnswers || {}) }
+          };
+        } catch (err) {
+          return JSON.parse(JSON.stringify(defaultState));
+        }
+      }
+
+      function saveState() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (err) {
+          // Ignore storage quota errors gracefully
+        }
+        updateProgressAndHUD();
+      }
+
+      // Non-blocking Toast Helper (Never use alert())
+      function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        const colors = {
+          success: 'bg-gh-green text-white border-green-700',
+          error: 'bg-gh-red text-white border-red-800',
+          info: 'bg-gh-textLight dark:bg-gh-subtleDark text-white border-gh-borderDark'
+        };
+        toast.className = `pointer-events-auto px-4 py-3 rounded-xl shadow-lg border text-xs font-semibold flex items-center justify-between gap-3 animate-pop ${colors[type] || colors.info}`;
+        toast.innerHTML = `<span>${message}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          toast.style.transition = 'opacity 0.3s ease';
+          setTimeout(() => toast.remove(), 300);
+        }, 3200);
+      }
+
+      // =====================================================================
+      // 1. THEME MANAGEMENT
+      // =====================================================================
+      function applyTheme() {
+        const html = document.documentElement;
+        if (state.theme === 'dark') {
+          html.classList.add('dark');
+          html.classList.remove('light');
+        } else {
+          html.classList.add('light');
+          html.classList.remove('dark');
+        }
+      }
+
+      document.getElementById('theme-toggle').addEventListener('click', () => {
+        state.theme = state.theme === 'dark' ? 'light' : 'dark';
+        applyTheme();
+        saveState();
+      });
+
+      // =====================================================================
+      // 2. INTERACTIVE ARCHITECTURE DIAGRAM INSPECTOR
+      // =====================================================================
+      const phaseData = {
+        1: {
+          badge: 'Stage 1 of 5',
+          title: 'Create a Repository (main)',
+          summary: 'A repository is your project’s home folder on GitHub. Initializing it with a README.md establishes the default main branch.',
+          analogy: 'Think of creating a repository like setting up a clean, labeled binder on your desk with a title page (README.md) explaining what the project is about.',
+          vocab: '<strong>Repository (Repo):</strong> Storage space for files and revision history.<br/><strong>main:</strong> The official, deployable source of truth.'
+        },
+        2: {
+          badge: 'Stage 2 of 5',
+          title: 'Create a Branch (readme-edits)',
+          summary: 'Branching creates an isolated copy of main at a specific point in time so you can experiment without breaking live code.',
+          analogy: 'Like photocopying a document before scribbling edits in the margin—the original remains clean while you draft improvements.',
+          vocab: '<strong>Branch:</strong> A parallel version of your repository.<br/><strong>Snapshot:</strong> Exact state of files when the branch was created.'
+        },
+        3: {
+          badge: 'Stage 3 of 5',
+          title: 'Make & Commit Changes',
+          summary: 'On your feature branch, you edit files and save changes as commits. Each commit includes a message explaining why the change was made.',
+          analogy: 'Like clicking "Save Checkpoint" in a video game and writing a quick note in your logbook describing what you accomplished.',
+          vocab: '<strong>Commit:</strong> A saved change snapshot in Git history.<br/><strong>Commit Message:</strong> Short description explaining the purpose of a change.'
+        },
+        4: {
+          badge: 'Stage 4 of 5',
+          title: 'Open a Pull Request (PR)',
+          summary: 'A Pull Request proposes merging your branch into main. It displays color-coded diffs and opens a discussion space for code review.',
+          analogy: 'Like handing your edited draft to an editor with all changes highlighted in green and red, asking them to review and approve before publishing.',
+          vocab: '<strong>Pull Request (PR):</strong> Proposal to merge changes from one branch into another.<br/><strong>Diff:</strong> Line-by-line comparison showing additions (+) and deletions (-).'
+        },
+        5: {
+          badge: 'Stage 5 of 5',
+          title: 'Merge & Delete Branch',
+          summary: 'Once approved, you merge your feature branch into main and delete the temporary branch so your workspace stays organized.',
+          analogy: 'Publishing the approved article into the main magazine issue and recycling your rough draft sticky notes.',
+          vocab: '<strong>Merge:</strong> Combining changes from one branch into another.<br/><strong>Branch Cleanup:</strong> Deleting merged branches without losing commit history.'
+        }
+      };
+
+      function selectDiagramPhase(phaseNum) {
+        state.activePhase = phaseNum;
+        document.querySelectorAll('.flow-node').forEach(node => {
+          const p = Number(node.getAttribute('data-phase'));
+          if (p === phaseNum) {
+            node.classList.add('active-node');
+            node.querySelector('circle').setAttribute('r', '26');
+          } else {
+            node.classList.remove('active-node');
+            node.querySelector('circle').setAttribute('r', '22');
+          }
+        });
+
+        const info = phaseData[phaseNum];
+        document.getElementById('phase-badge').textContent = info.badge;
+        document.getElementById('phase-title').textContent = info.title;
+        document.getElementById('phase-summary').textContent = info.summary;
+        document.getElementById('phase-analogy').innerHTML = info.analogy;
+        document.getElementById('phase-vocab').innerHTML = info.vocab;
+      }
+
+      document.querySelectorAll('.flow-node').forEach(node => {
+        node.addEventListener('click', () => {
+          const phase = Number(node.getAttribute('data-phase'));
+          selectDiagramPhase(phase);
+          saveState();
+        });
+      });
+
+      // =====================================================================
+      // 3. LIVE GIT SANDBOX GRAPH RENDERER
+      // =====================================================================
+      function renderLiveGitGraph() {
+        const svg = document.getElementById('live-git-graph');
+        if (!state.repoCreated) {
+          svg.innerHTML = `<text x="410" y="60" text-anchor="middle" class="fill-gray-400 text-xs font-mono">Complete Module 1 below to initialize your repository graph...</text>`;
+          return;
+        }
+
+        let markup = `
+          <!-- main track -->
+          <text x="16" y="34" class="fill-gh-blue font-mono text-xs font-bold">main</text>
+          <line x1="90" y1="30" x2="760" y2="30" stroke="#0969da" stroke-width="3.5" stroke-linecap="round" />
+          <!-- Initial commit C1 -->
+          <circle cx="130" cy="30" r="10" fill="#0969da" stroke="#fff" stroke-width="2.5" />
+          <text x="130" y="14" text-anchor="middle" class="fill-gray-500 font-mono text-[10px]">C1: Initial README</text>
+        `;
+
+        if (state.branchCreated) {
+          const isDeleted = state.mergeStep === 3;
+          const branchColor = isDeleted ? '#9ca3af' : '#1a7f37';
+          markup += `
+            <text x="16" y="88" fill="${branchColor}" class="font-mono text-xs font-bold">${state.branchName}${isDeleted ? ' (deleted)' : ''}</text>
+            <path d="M 130 30 C 175 30, 185 84, 240 84" fill="none" stroke="${branchColor}" stroke-width="3" stroke-dasharray="${isDeleted ? '4 4' : 'none'}" />
+            <circle cx="240" cy="84" r="9" fill="${branchColor}" stroke="#fff" stroke-width="2" />
+            <text x="240" y="104" text-anchor="middle" class="fill-gray-500 font-mono text-[10px]">Branch created</text>
+          `;
+        }
+
+        if (state.committed) {
+          const isDeleted = state.mergeStep === 3;
+          const branchColor = isDeleted ? '#9ca3af' : '#1a7f37';
+          markup += `
+            <line x1="249" y1="84" x2="400" y2="84" stroke="${branchColor}" stroke-width="3" stroke-dasharray="${isDeleted ? '4 4' : 'none'}" />
+            <circle cx="400" cy="84" r="10" fill="${branchColor}" stroke="#fff" stroke-width="2.5" />
+            <text x="400" y="104" text-anchor="middle" fill="${branchColor}" class="font-mono text-[10px] font-bold">C2: README edited</text>
+          `;
+        }
+
+        if (state.prOpened && state.mergeStep < 2) {
+          markup += `
+            <path d="M 410 84 C 465 84, 485 30, 540 30" fill="none" stroke="#8250df" stroke-width="2.5" stroke-dasharray="5 4" />
+            <rect x="490" y="16" width="100" height="22" rx="11" fill="#8250df" />
+            <text x="540" y="31" text-anchor="middle" fill="#fff" class="font-mono text-[10px] font-bold">PR #1 Open</text>
+          `;
+        }
+
+        if (state.mergeStep >= 2) {
+          markup += `
+            <path d="M 410 84 C 465 84, 485 30, 560 30" fill="none" stroke="#8250df" stroke-width="3.5" />
+            <circle cx="560" cy="30" r="11" fill="#8250df" stroke="#fff" stroke-width="2.5" />
+            <text x="560" y="14" text-anchor="middle" fill="#8250df" class="font-mono text-[10px] font-bold">M1: PR #1 Merged!</text>
+          `;
+        }
+
+        svg.innerHTML = markup;
+      }
+
+      // =====================================================================
+      // 4. MODULE 1: CREATE REPOSITORY
+      // =====================================================================
+      const m1Form = document.getElementById('m1-form');
+      const repoNameInput = document.getElementById('repo-name-input');
+      const repoDescInput = document.getElementById('repo-desc-input');
+      const readmeCheckbox = document.getElementById('readme-checkbox');
+
+      m1Form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const nameVal = repoNameInput.value.trim();
+        if (!nameVal) {
+          showToast('Please enter a repository name (e.g., hello-world).', 'error');
+          repoNameInput.focus();
+          return;
+        }
+        if (!readmeCheckbox.checked) {
+          showToast('Check "Add a README file" to initialize your main branch!', 'error');
+          readmeCheckbox.focus();
+          return;
+        }
+
+        const vis = document.querySelector('input[name="repo-vis"]:checked')?.value || 'Public';
+        state.repoCreated = true;
+        state.repoName = nameVal;
+        state.repoDesc = repoDescInput.value.trim() || 'This repository is for practicing the GitHub Flow.';
+        state.repoVisibility = vis;
+
+        selectDiagramPhase(2);
+        syncUIWithState();
+        saveState();
+        showToast(`Repository "${nameVal}" created with README.md on main!`, 'success');
+      });
+
+      // =====================================================================
+      // 5. MODULE 2: CREATE BRANCH
+      // =====================================================================
+      const branchNameInput = document.getElementById('branch-name-input');
+      const branchPreviewName = document.getElementById('branch-preview-name');
+      const createBranchBtn = document.getElementById('create-branch-btn');
+
+      branchNameInput.addEventListener('input', () => {
+        const clean = branchNameInput.value.trim().replace(/\s+/g, '-') || 'readme-edits';
+        branchPreviewName.textContent = clean;
+      });
+
+      createBranchBtn.addEventListener('click', () => {
+        const typed = branchNameInput.value.trim().replace(/\s+/g, '-');
+        const finalBranch = typed || 'readme-edits';
+        state.branchCreated = true;
+        state.branchName = finalBranch;
+
+        selectDiagramPhase(3);
+        syncUIWithState();
+        saveState();
+        showToast(`Switched to new branch "${finalBranch}" created from main!`, 'success');
+      });
+
+      // =====================================================================
+      // 6. MODULE 3: MARKDOWN EDITOR, LIVE PREVIEW & COMMIT
+      // =====================================================================
+      const readmeEditor = document.getElementById('readme-editor');
+      const readmePreview = document.getElementById('readme-preview');
+      const commitMsgInput = document.getElementById('commit-msg-input');
+      const commitQualityHint = document.getElementById('commit-quality-hint');
+      const commitChangesBtn = document.getElementById('commit-changes-btn');
+
+      function renderSimpleMarkdown(mdText) {
+        const escaped = mdText
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+
+        const lines = escaped.split('\n');
+        return lines.map(line => {
+          if (line.startsWith('### ')) {
+            return `<h3 class="text-base font-bold mt-2">${line.slice(4)}</h3>`;
+          }
+          if (line.startsWith('## ')) {
+            return `<h2 class="text-lg font-bold border-b border-gh-borderLight dark:border-gh-borderDark pb-1 mt-3">${line.slice(3)}</h2>`;
+          }
+          if (line.startsWith('# ')) {
+            return `<h1 class="text-xl font-extrabold border-b border-gh-borderLight dark:border-gh-borderDark pb-1.5">${line.slice(2)}</h1>`;
+          }
+          if (line.startsWith('- ') || line.startsWith('* ')) {
+            return `<li class="ml-5 list-disc text-xs">${formatInlineMd(line.slice(2))}</li>`;
+          }
+          if (line.trim() === '') {
+            return `<div class="h-2"></div>`;
+          }
+          return `<p class="text-xs leading-relaxed">${formatInlineMd(line)}</p>`;
+        }).join('');
+      }
+
+      function formatInlineMd(str) {
+        return str
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.+?)\*/g, '<em>$1</em>')
+          .replace(/`(.+?)`/g, '<code class="font-mono px-1 py-0.5 rounded bg-gh-subtleLight dark:bg-gh-canvasDark border border-gh-borderLight dark:border-gh-borderDark">$1</code>');
+      }
+
+      readmeEditor.addEventListener('input', () => {
+        state.readmeContent = readmeEditor.value;
+        readmePreview.innerHTML = renderSimpleMarkdown(state.readmeContent);
+        saveState();
+      });
+
+      commitMsgInput.addEventListener('input', () => {
+        const msg = commitMsgInput.value.trim();
+        if (msg.length === 0) {
+          commitQualityHint.textContent = 'Tip: Use an imperative verb (e.g., "Add...", "Update...") and avoid vague messages.';
+          commitQualityHint.className = 'text-[11px] text-gh-mutedLight dark:text-gh-mutedDark mt-1';
+        } else if (msg.length < 10) {
+          commitQualityHint.textContent = 'Too brief — add a few more words explaining what changed.';
+          commitQualityHint.className = 'text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-medium';
+        } else {
+          commitQualityHint.textContent = '✓ Clear, descriptive commit message!';
+          commitQualityHint.className = 'text-[11px] text-gh-green mt-1 font-semibold';
+        }
+      });
+
+      commitChangesBtn.addEventListener('click', () => {
+        const msg = commitMsgInput.value.trim();
+        if (msg.length < 5) {
+          showToast('Please write a meaningful commit message (at least 5 characters).', 'error');
+          commitMsgInput.focus();
+          return;
+        }
+        if (readmeEditor.value.trim() === INITIAL_README.trim()) {
+          showToast('Make at least one edit to README.md before committing!', 'error');
+          readmeEditor.focus();
+          return;
+        }
+
+        state.readmeContent = readmeEditor.value;
+        state.commitMessage = msg;
+        state.committed = true;
+
+        selectDiagramPhase(4);
+        syncUIWithState();
+        saveState();
+        showToast(`Committed to "${state.branchName}": ${msg}`, 'success');
+      });
+
+      // =====================================================================
+      // 7. MODULE 4: DIFF VIEWER & PULL REQUEST
+      // =====================================================================
+      function renderGitDiff() {
+        const viewer = document.getElementById('git-diff-viewer');
+        const oldLines = INITIAL_README.split('\n');
+        const newLines = (state.readmeContent || INITIAL_README).split('\n');
+
+        let additions = 0;
+        let deletions = 0;
+        let html = `<div class="px-2 py-1 text-gh-mutedLight dark:text-gh-mutedDark bg-blue-50/50 dark:bg-blue-950/20">@@ -1,${oldLines.length} +1,${newLines.length} @@</div>`;
+
+        const maxLen = Math.max(oldLines.length, newLines.length);
+        for (let i = 0; i < maxLen; i++) {
+          const oLine = oldLines[i];
+          const nLine = newLines[i];
+
+          if (oLine === nLine && oLine !== undefined) {
+            html += `<div class="px-2 py-0.5 text-gh-mutedLight dark:text-gh-mutedDark whitespace-pre">  ${escapeHtml(oLine)}</div>`;
+          } else {
+            if (oLine !== undefined) {
+              deletions++;
+              html += `<div class="px-2 py-0.5 bg-red-100/80 dark:bg-red-950/50 text-gh-red dark:text-gh-redDark whitespace-pre">- ${escapeHtml(oLine)}</div>`;
+            }
+            if (nLine !== undefined) {
+              additions++;
+              html += `<div class="px-2 py-0.5 bg-green-100/80 dark:bg-green-950/50 text-gh-green dark:text-green-400 whitespace-pre">+ ${escapeHtml(nLine)}</div>`;
+            }
+          }
+        }
+
+        viewer.innerHTML = html;
+        document.getElementById('diff-add-count').textContent = `+${additions}`;
+        document.getElementById('diff-del-count').textContent = `-${deletions}`;
+      }
+
+      function escapeHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      const prTitleInput = document.getElementById('pr-title-input');
+      const prDescInput = document.getElementById('pr-desc-input');
+      const openPrBtn = document.getElementById('open-pr-btn');
+      const simReviewToggle = document.getElementById('simulate-review-toggle');
+      const teammateReviewBox = document.getElementById('teammate-review-box');
+
+      simReviewToggle.addEventListener('change', () => {
+        state.reviewSimulated = simReviewToggle.checked;
+        teammateReviewBox.classList.toggle('hidden', !state.reviewSimulated);
+        saveState();
+      });
+
+      openPrBtn.addEventListener('click', () => {
+        const title = prTitleInput.value.trim();
+        if (!title) {
+          showToast('Please enter a Pull Request title.', 'error');
+          prTitleInput.focus();
+          return;
+        }
+        state.prTitle = title;
+        state.prDescription = prDescInput.value.trim();
+        state.prOpened = true;
+
+        selectDiagramPhase(5);
+        syncUIWithState();
+        saveState();
+        showToast(`Pull Request #1 "${title}" opened!`, 'success');
+      });
+
+      // =====================================================================
+      // 8. MODULE 5: MERGE PULL REQUEST & CONTRIBUTION GRAPH
+      // =====================================================================
+      document.getElementById('merge-pr-btn').addEventListener('click', () => {
+        state.mergeStep = 1;
+        syncUIWithState();
+        saveState();
+      });
+
+      document.getElementById('cancel-merge-btn').addEventListener('click', () => {
+        state.mergeStep = 0;
+        syncUIWithState();
+        saveState();
+      });
+
+      document.getElementById('confirm-merge-btn').addEventListener('click', () => {
+        state.mergeStep = 2;
+        syncUIWithState();
+        saveState();
+        showToast('Pull Request merged into main! Your contribution graph lit up!', 'success');
+      });
+
+      document.getElementById('delete-branch-btn').addEventListener('click', () => {
+        state.mergeStep = 3;
+        syncUIWithState();
+        saveState();
+        showToast(`Branch "${state.branchName}" safely deleted!`, 'success');
+      });
+
+      function renderContribGrid() {
+        const grid = document.getElementById('contrib-grid');
+        const isMerged = state.mergeStep >= 2;
+        let squares = '';
+        for (let i = 0; i < 28; i++) {
+          if (i === 27 && isMerged) {
+            squares += `<div title="Today: Merged Pull Request #1!" class="h-4 rounded-xs bg-gh-green animate-pop ring-2 ring-green-400"></div>`;
+          } else if (i % 5 === 0 || i === 12 || i === 19) {
+            squares += `<div class="h-4 rounded-xs bg-green-200 dark:bg-green-900/50"></div>`;
+          } else {
+            squares += `<div class="h-4 rounded-xs bg-gray-100 dark:bg-gray-800"></div>`;
+          }
+        }
+        grid.innerHTML = squares;
+        document.getElementById('contrib-status').textContent = isMerged
+          ? '✓ Today’s contribution recorded on main!'
+          : 'Merge PR to earn green square';
+      }
+
+      // =====================================================================
+      // 9. WORKBOOK NOTES & SELF-CHECKLISTS
+      // =====================================================================
+      ['m1', 'm2', 'm3', 'm4', 'm5'].forEach(mod => {
+        const textarea = document.getElementById(`note-${mod}`);
+        textarea.value = state.notes[mod] || '';
+        textarea.addEventListener('input', () => {
+          state.notes[mod] = textarea.value;
+          saveState();
+        });
+      });
+
+      document.querySelectorAll('.self-check-box').forEach(box => {
+        const key = box.getAttribute('data-check');
+        box.checked = Boolean(state.checks[key]);
+        box.addEventListener('change', () => {
+          state.checks[key] = box.checked;
+          saveState();
+        });
+      });
+
+      // =====================================================================
+      // 10. MASTERY KNOWLEDGE CHECK (5 SCENARIO QUESTIONS)
+      // =====================================================================
+      const quizQuestions = [
+        {
+          q: '1. You just created a new repository on GitHub and forgot to check "Add a README file". Why can’t you immediately create a new branch in the web UI?',
+          options: [
+            'GitHub requires at least 2 collaborators before creating branches.',
+            'An empty repository has zero commits, so the default main branch does not exist yet.',
+            'Branches can only be created in Private repositories.'
+          ],
+          correct: 1,
+          explanation: 'Branches are pointers to commits. Initializing a README creates the first commit and establishes the main branch.'
+        },
+        {
+          q: '2. While working on your readme-edits branch, you make 3 commits. What happens to the main branch during this time?',
+          options: [
+            'main automatically updates after every commit you save.',
+            'main stays completely untouched until you open and merge a Pull Request.',
+            'main is locked so no teammates can view the repository.'
+          ],
+          correct: 1,
+          explanation: 'Branches isolate your changes. Your commits remain solely on readme-edits until merged via a Pull Request.'
+        },
+        {
+          q: '3. In a Pull Request diff viewer, what do lines highlighted in red with a minus (-) sign represent?',
+          options: [
+            'Syntax errors that prevent GitHub from merging the file.',
+            'Lines from the base branch (main) that were removed or replaced in your branch.',
+            'Comments left by code reviewers.'
+          ],
+          correct: 1,
+          explanation: 'Red (-) lines show content removed or modified compared to the base branch, while green (+) lines show new additions.'
+        },
+        {
+          q: '4. When does a "Merge Conflict" occur during a Pull Request?',
+          options: [
+            'Whenever two branches have different names.',
+            'When both main and your feature branch modified the exact same lines of a file differently.',
+            'Whenever a Pull Request has more than one commit.'
+          ],
+          correct: 1,
+          explanation: 'Git automatically merges changes in different areas, but pauses for human resolution if the same lines were edited in conflicting ways.'
+        },
+        {
+          q: '5. After you click "Confirm merge" on your Pull Request, why does GitHub display a "Delete branch" button?',
+          options: [
+            'To undo the merge if you change your mind.',
+            'To remove the temporary branch pointer and keep the repo tidy—your merged commits remain safely in main.',
+            'To permanently erase your commit history from your profile.'
+          ],
+          correct: 1,
+          explanation: 'Once merged into main, the feature branch has served its purpose. Deleting it removes clutter without losing any commit history.'
+        }
+      ];
+
+      function renderQuiz() {
+        const container = document.getElementById('quiz-container');
+        container.innerHTML = quizQuestions.map((item, qIdx) => {
+          const chosen = state.quizAnswers[qIdx];
+          const answered = chosen !== undefined;
+
+          const optionsHtml = item.options.map((opt, oIdx) => {
+            let btnStyle = 'border-gh-borderLight dark:border-gh-borderDark bg-gh-subtleLight dark:bg-gh-canvasDark hover:border-gh-blue';
+            if (answered) {
+              if (oIdx === item.correct) {
+                btnStyle = 'border-gh-green bg-green-50 dark:bg-green-950/50 text-gh-green dark:text-green-400 font-semibold';
+              } else if (oIdx === chosen) {
+                btnStyle = 'border-gh-red bg-red-50 dark:bg-red-950/50 text-gh-red dark:text-gh-redDark';
+              }
+            }
+
+            return `
+              <button type="button" data-q="${qIdx}" data-o="${oIdx}" class="quiz-opt-btn w-full text-left px-3.5 py-2.5 rounded-xl border text-xs transition flex items-start gap-2.5 ${btnStyle}">
+                <span class="font-mono font-bold shrink-0">${String.fromCharCode(65 + oIdx)}.</span>
+                <span>${opt}</span>
+              </button>
+            `;
+          }).join('');
+
+          const feedbackHtml = answered ? `
+            <div class="mt-2.5 p-3 rounded-xl text-xs ${chosen === item.correct ? 'bg-green-50 dark:bg-green-950/30 text-gh-green dark:text-green-400 border border-green-200 dark:border-green-900' : 'bg-amber-50 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-900'}">
+              <strong>${chosen === item.correct ? '✓ Correct!' : 'Not quite:'}</strong> ${item.explanation}
+            </div>
+          ` : '';
+
+          return `
+            <div class="p-4 rounded-xl border border-gh-borderLight dark:border-gh-borderDark space-y-2.5">
+              <p class="text-xs sm:text-sm font-bold leading-snug">${item.q}</p>
+              <div class="space-y-2">${optionsHtml}</div>
+              ${feedbackHtml}
+            </div>
+          `;
+        }).join('');
+
+        document.querySelectorAll('.quiz-opt-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const q = Number(btn.getAttribute('data-q'));
+            const o = Number(btn.getAttribute('data-o'));
+            state.quizAnswers[q] = o;
+            renderQuiz();
+            saveState();
+          });
+        });
+      }
+
+      // =====================================================================
+      // 11. UI SYNCHRONIZATION & PROGRESS TRACKING
+      // =====================================================================
+      function syncUIWithState() {
+        applyTheme();
+        selectDiagramPhase(state.activePhase);
+        renderLiveGitGraph();
+        renderContribGrid();
+
+        // Populate inputs from state
+        if (state.repoName) repoNameInput.value = state.repoName;
+        if (state.repoDesc) repoDescInput.value = state.repoDesc;
+        if (state.repoCreated) readmeCheckbox.checked = true;
+        readmeEditor.value = state.readmeContent;
+        readmePreview.innerHTML = renderSimpleMarkdown(state.readmeContent);
+        if (state.commitMessage) commitMsgInput.value = state.commitMessage;
+        if (state.prTitle) prTitleInput.value = state.prTitle;
+        if (state.prDescription) prDescInput.value = state.prDescription;
+        simReviewToggle.checked = state.reviewSimulated;
+        teammateReviewBox.classList.toggle('hidden', !state.reviewSimulated);
+
+        // Module 1 status
+        const m1Pill = document.getElementById('m1-status-pill');
+        if (state.repoCreated) {
+          m1Pill.textContent = '✓ Completed';
+          m1Pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-gh-green dark:bg-green-950 dark:text-green-400';
+        } else {
+          m1Pill.textContent = 'Pending Lab';
+          m1Pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300';
+        }
+
+        // Module 2 unlock & status
+        const m2Lock = document.getElementById('m2-lock-overlay');
+        const m2Content = document.getElementById('m2-content');
+        const m2Pill = document.getElementById('m2-status-pill');
+        if (state.repoCreated) {
+          m2Lock.classList.add('hidden');
+          m2Content.classList.remove('opacity-50', 'pointer-events-none');
+          if (state.branchCreated) {
+            m2Pill.textContent = '✓ Completed';
+            m2Pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-gh-green dark:bg-green-950 dark:text-green-400';
+            document.getElementById('current-branch-label').textContent = state.branchName;
+            const existingBranch = document.getElementById('existing-feature-branch');
+            existingBranch.classList.remove('hidden');
+            existingBranch.classList.add('flex');
+            existingBranch.querySelector('span').textContent = `✓ ${state.branchName}`;
+          } else {
+            m2Pill.textContent = 'Ready';
+            m2Pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-gh-blue dark:bg-blue-950 dark:text-gh-blueDark';
+          }
+        } else {
+          m2Lock.classList.remove('hidden');
+          m2Content.classList.add('opacity-50', 'pointer-events-none');
+          m2Pill.textContent = 'Locked (Complete Module 1)';
+        }
+
+        // Module 3 unlock & status
+        const m3Lock = document.getElementById('m3-lock-overlay');
+        const m3Content = document.getElementById('m3-content');
+        const m3Pill = document.getElementById('m3-status-pill');
+        if (state.branchCreated) {
+          m3Lock.classList.add('hidden');
+          m3Content.classList.remove('opacity-50', 'pointer-events-none');
+          if (state.committed) {
+            m3Pill.textContent = '✓ Completed';
+            m3Pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-gh-green dark:bg-green-950 dark:text-green-400';
+          } else {
+            m3Pill.textContent = 'Ready';
+            m3Pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-gh-blue dark:bg-blue-950 dark:text-gh-blueDark';
+          }
+        } else {
+          m3Lock.classList.remove('hidden');
+          m3Content.classList.add('opacity-50', 'pointer-events-none');
+          m3Pill.textContent = 'Locked (Complete Module 2)';
+        }
+
+        // Module 4 unlock & status
+        const m4Lock = document.getElementById('m4-lock-overlay');
+        const m4Content = document.getElementById('m4-content');
+        const m4Pill = document.getElementById('m4-status-pill');
+        if (state.committed) {
+          m4Lock.classList.add('hidden');
+          m4Content.classList.remove('opacity-50', 'pointer-events-none');
+          renderGitDiff();
+          if (state.prOpened) {
+            m4Pill.textContent = '✓ Completed';
+            m4Pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-gh-green dark:bg-green-950 dark:text-green-400';
+          } else {
+            m4Pill.textContent = 'Ready';
+            m4Pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-gh-purple dark:bg-purple-950 dark:text-gh-purpleDark';
+          }
+        } else {
+          m4Lock.classList.remove('hidden');
+          m4Content.classList.add('opacity-50', 'pointer-events-none');
+          m4Pill.textContent = 'Locked (Complete Module 3)';
+        }
+
+        // Module 5 unlock & merge steps
+        const m5Lock = document.getElementById('m5-lock-overlay');
+        const m5Content = document.getElementById('m5-content');
+        const m5Pill = document.getElementById('m5-status-pill');
+        const step1 = document.getElementById('merge-step-1');
+        const step2 = document.getElementById('merge-step-2');
+        const step3 = document.getElementById('merge-step-3');
+
+        if (state.prOpened) {
+          m5Lock.classList.add('hidden');
+          m5Content.classList.remove('opacity-50', 'pointer-events-none');
+
+          step1.classList.toggle('hidden', state.mergeStep !== 0);
+          step2.classList.toggle('hidden', state.mergeStep !== 1);
+          step3.classList.toggle('hidden', state.mergeStep < 2);
+
+          const delBtn = document.getElementById('delete-branch-btn');
+          if (state.mergeStep === 3) {
+            delBtn.textContent = `✓ Branch "${state.branchName}" deleted`;
+            delBtn.disabled = true;
+            delBtn.classList.add('opacity-60', 'cursor-default');
+            m5Pill.textContent = '✓ Mastery Complete';
+            m5Pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-gh-purple dark:bg-purple-950 dark:text-gh-purpleDark';
+          } else if (state.mergeStep === 2) {
+            m5Pill.textContent = 'Merged (Delete branch next)';
+            m5Pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-green-100 text-gh-green dark:bg-green-950 dark:text-green-400';
+          } else {
+            m5Pill.textContent = 'Ready to Merge';
+            m5Pill.className = 'px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-gh-purple dark:bg-purple-950 dark:text-gh-purpleDark';
+          }
+        } else {
+          m5Lock.classList.remove('hidden');
+          m5Content.classList.add('opacity-50', 'pointer-events-none');
+          m5Pill.textContent = 'Locked (Complete Module 4)';
+        }
+
+        updateProgressAndHUD();
+      }
+
+      function updateProgressAndHUD() {
+        // HUD update
+        document.getElementById('hud-repo').textContent = state.repoCreated ? `you/${state.repoName} (${state.repoVisibility})` : 'Not created';
+        document.getElementById('hud-branch').textContent = !state.repoCreated
+          ? '—'
+          : state.mergeStep === 3
+            ? 'main (cleaned up)'
+            : state.branchCreated
+              ? state.branchName
+              : 'main';
+        document.getElementById('hud-pr').textContent = state.mergeStep >= 2
+          ? 'Merged (#1)'
+          : state.prOpened
+            ? 'Open (#1)'
+            : 'None';
+
+        // Calculate 15 total mastery points:
+        // 5 interactive modules + 5 self-checks + 5 correct quiz answers
+        let earned = 0;
+        if (state.repoCreated) earned++;
+        if (state.branchCreated) earned++;
+        if (state.committed) earned++;
+        if (state.prOpened) earned++;
+        if (state.mergeStep >= 2) earned++;
+
+        Object.values(state.checks).forEach(val => { if (val) earned++; });
+        quizQuestions.forEach((q, idx) => {
+          if (state.quizAnswers[idx] === q.correct) earned++;
+        });
+
+        const total = 15;
+        const pct = Math.round((earned / total) * 100);
+        document.getElementById('badge-counter').textContent = `${earned} / ${total}`;
+        document.getElementById('progress-percent').textContent = `${pct}%`;
+        document.getElementById('progress-bar-fill').style.width = `${pct}%`;
+
+        const statusText = document.getElementById('progress-status-text');
+        if (pct === 100) {
+          statusText.textContent = 'Congratulations! You have achieved 100% GitHub Flow & Pull Request Mastery!';
+        } else if (pct >= 60) {
+          statusText.textContent = 'Great momentum! Finish remaining self-checks and knowledge check questions.';
+        } else {
+          statusText.textContent = 'Getting started: Complete the 5 interactive labs, self-checks, and quiz.';
+        }
+      }
+
+      // =====================================================================
+      // 12. EXPORT / PRINT & RESET MODAL HANDLERS
+      // =====================================================================
+      document.getElementById('export-btn').addEventListener('click', () => {
+        showToast('Opening print / PDF export dialog for your workbook notes...', 'info');
+        setTimeout(() => window.print(), 300);
+      });
+
+      const confirmModal = document.getElementById('confirm-modal');
+      document.getElementById('reset-btn').addEventListener('click', () => {
+        confirmModal.classList.remove('hidden');
+        confirmModal.classList.add('flex');
+      });
+
+      document.getElementById('cancel-reset-btn').addEventListener('click', () => {
+        confirmModal.classList.add('hidden');
+        confirmModal.classList.remove('flex');
+      });
+
+      document.getElementById('confirm-reset-btn').addEventListener('click', () => {
+        const currentTheme = state.theme;
+        localStorage.removeItem(STORAGE_KEY);
+        state = JSON.parse(JSON.stringify(defaultState));
+        state.theme = currentTheme;
+
+        // Reset form fields
+        repoNameInput.value = '';
+        repoDescInput.value = '';
+        readmeCheckbox.checked = false;
+        branchNameInput.value = '';
+        branchPreviewName.textContent = 'readme-edits';
+        commitMsgInput.value = '';
+        prTitleInput.value = '';
+        prDescInput.value = '';
+        ['m1', 'm2', 'm3', 'm4', 'm5'].forEach(m => {
+          document.getElementById(`note-${m}`).value = '';
+        });
+        document.querySelectorAll('.self-check-box').forEach(b => b.checked = false);
+
+        const delBtn = document.getElementById('delete-branch-btn');
+        delBtn.textContent = 'Delete branch';
+        delBtn.disabled = false;
+        delBtn.classList.remove('opacity-60', 'cursor-default');
+
+        confirmModal.classList.add('hidden');
+        confirmModal.classList.remove('flex');
+
+        renderQuiz();
+        syncUIWithState();
+        saveState();
+        showToast('Workbook progress has been completely reset.', 'info');
+      });
+
+      // Initialize app on load
+      renderQuiz();
+      syncUIWithState();
+    })();
+  </script>
+</body>
+</html>
